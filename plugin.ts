@@ -1,9 +1,9 @@
-import {Reflection, ReflectionKind} from "typedoc/dist/lib/models/reflections/abstract";
-import {Component, ConverterComponent} from "typedoc/dist/lib/converter/components";
-import {Converter} from "typedoc/dist/lib/converter/converter";
-import {Context} from "typedoc/dist/lib/converter/context";
-import {CommentPlugin} from "typedoc/dist/lib/converter/plugins/CommentPlugin";
-import {ContainerReflection} from "typedoc/dist/lib/models/reflections/container";
+import { Reflection, ReflectionKind } from "typedoc/dist/lib/models/reflections/abstract";
+import { Component, ConverterComponent } from "typedoc/dist/lib/converter/components";
+import { Converter } from "typedoc/dist/lib/converter/converter";
+import { Context } from "typedoc/dist/lib/converter/context";
+import { CommentPlugin } from "typedoc/dist/lib/converter/plugins/CommentPlugin";
+import { ContainerReflection } from "typedoc/dist/lib/models/reflections/container";
 import { getRawComment } from "./getRawComment";
 
 
@@ -33,17 +33,16 @@ import { getRawComment } from "./getRawComment";
  * will be used as the module comment, and documentation will be generated from it (note: this plugin does not
  * attempt to count lengths of merged module comments in order to guess the best one)
  */
-@Component({name:'external-module-name'})
-export class ExternalModuleNamePlugin extends ConverterComponent
-{
+@Component({ name: 'external-module-name' })
+export class ExternalModuleNamePlugin extends ConverterComponent {
   /** List of module reflections which are models to rename */
   private moduleRenames: ModuleRename[];
 
   initialize() {
     this.listenTo(this.owner, {
-      [Converter.EVENT_BEGIN]:                this.onBegin,
-      [Converter.EVENT_CREATE_DECLARATION]:   this.onDeclaration,
-      [Converter.EVENT_RESOLVE_BEGIN]:        this.onBeginResolve,
+      [Converter.EVENT_BEGIN]: this.onBegin,
+      [Converter.EVENT_CREATE_DECLARATION]: this.onDeclaration,
+      [Converter.EVENT_RESOLVE_BEGIN]: this.onBeginResolve,
     });
   }
 
@@ -52,7 +51,7 @@ export class ExternalModuleNamePlugin extends ConverterComponent
    *
    * @param context  The context object describing the current state the converter is in.
    */
-  private onBegin(context:Context) {
+  private onBegin(context: Context) {
     this.moduleRenames = [];
   }
 
@@ -64,18 +63,28 @@ export class ExternalModuleNamePlugin extends ConverterComponent
    * @param node  The node that is currently processed if available.
    */
   private onDeclaration(context: Context, reflection: Reflection, node?) {
-    if (reflection.kindOf(ReflectionKind.ExternalModule)) {
-      let comment = getRawComment(node);
+    if (reflection.kindOf(ReflectionKind.ExternalModule) || reflection.kindOf(ReflectionKind.Module)) {
+      let comment: string = null
+      try {
+        comment = getRawComment(node);
+      } catch (err) {
+        return
+      }
       // Look for @module
       let match = /@module\s+([\w\-_/@"]+)/.exec(comment);
       if (match) {
         // Look for @preferred
         let preferred = /@preferred/.exec(comment);
         // Set up a list of renames operations to perform when the resolve phase starts
+        if (reflection.kindOf(ReflectionKind.Module)) {
+          console.log("Found @module on a real module, renaming")
+          reflection.name = '"' + reflection.name + '"'
+          reflection.kind = ReflectionKind.ExternalModule
+        }
         this.moduleRenames.push({
           renameTo: match[1],
           preferred: preferred != null,
-          reflection: <ContainerReflection> reflection
+          reflection: <ContainerReflection>reflection
         });
       }
     }
@@ -92,16 +101,16 @@ export class ExternalModuleNamePlugin extends ConverterComponent
    *
    * @param context  The context object describing the current state the converter is in.
    */
-  private onBeginResolve(context:Context) {
+  private onBeginResolve(context: Context) {
     let projRefs = context.project.reflections;
-    let refsArray: Reflection[] = Object.keys(projRefs).reduce((m,k) => {m.push(projRefs[k]); return m;}, []);
+    let refsArray: Reflection[] = Object.keys(projRefs).reduce((m, k) => { m.push(projRefs[k]); return m; }, []);
 
     // Process each rename
     this.moduleRenames.forEach(item => {
-      let renaming = <ContainerReflection> item.reflection;
+      let renaming = <ContainerReflection>item.reflection;
       // Find an existing module that already has the "rename to" name.  Use it as the merge target.
       let mergeTarget = <ContainerReflection>
-          refsArray.filter(ref => ref.kind === renaming.kind && ref.name === item.renameTo)[0];
+        refsArray.filter(ref => ref.kind === renaming.kind && ref.name === item.renameTo)[0];
 
       // If there wasn't a merge target, just change the name of the current module and exit.
       if (!mergeTarget) {
@@ -118,7 +127,7 @@ export class ExternalModuleNamePlugin extends ConverterComponent
       childrenOfRenamed.forEach((ref: Reflection) => {
         // update links in both directions
         ref.parent = mergeTarget;
-        mergeTarget.children.push(<any> ref)
+        mergeTarget.children.push(<any>ref)
       });
 
       // If @preferred was found on the current item, update the mergeTarget's comment
