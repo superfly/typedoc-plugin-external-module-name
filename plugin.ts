@@ -1,4 +1,4 @@
-import { Reflection, ReflectionKind } from "typedoc/dist/lib/models/reflections/abstract";
+import { Reflection, ReflectionKind, ReflectionFlags } from "typedoc/dist/lib/models/reflections/abstract";
 import { Component, ConverterComponent } from "typedoc/dist/lib/converter/components";
 import { Converter } from "typedoc/dist/lib/converter/converter";
 import { Context } from "typedoc/dist/lib/converter/context";
@@ -68,21 +68,28 @@ export class ExternalModuleNamePlugin extends ConverterComponent {
       try {
         comment = getRawComment(node);
       } catch (err) {
-        return
+        comment = ''
       }
       // Look for @module
       let match = /@module\s+([\w\-_/@"]+)/.exec(comment);
+      let mname = undefined
       if (match) {
+        mname = match[1]
+      } else if (reflection.kindOf(ReflectionKind.Module)) {
+        mname = reflection.name
+      }
+      if (mname) {
         // Look for @preferred
         let preferred = /@preferred/.exec(comment);
         // Set up a list of renames operations to perform when the resolve phase starts
         if (reflection.kindOf(ReflectionKind.Module)) {
-          console.log("Found @module on a real module, renaming")
-          reflection.name = '"' + reflection.name + '"'
+          if (mname === reflection.name && !mname.includes('"')) {
+            reflection.name = '"' + reflection.name + '"'
+          }
           reflection.kind = ReflectionKind.ExternalModule
         }
         this.moduleRenames.push({
-          renameTo: match[1],
+          renameTo: mname,
           preferred: preferred != null,
           reflection: <ContainerReflection>reflection
         });
