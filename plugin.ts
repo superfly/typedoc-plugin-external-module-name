@@ -139,7 +139,7 @@ export class ExternalModuleNamePlugin extends ConverterComponent {
 
       // If @preferred was found on the current item, update the mergeTarget's comment
       // with comment from the renaming module
-      if (item.preferred)
+      if (item.preferred || !mergeTarget.comment)
         mergeTarget.comment = renaming.comment;
 
       // Now that all the children have been relocated to the mergeTarget, delete the empty module
