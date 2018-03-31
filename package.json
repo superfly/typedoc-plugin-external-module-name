@@ -1,5 +1,5 @@
 {
-  "name": "typedoc-plugin-external-module-name",
+  "name": "@fly/typedoc-plugin-external-module-name",
   "version": "1.1.1",
   "description": "Specify the Typedoc Module of a file using @module annotation",
   "main": "index.js",
